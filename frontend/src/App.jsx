@@ -13,6 +13,7 @@ import Subjects from './pages/Subjects'
 import Schedule from './pages/Schedule'
 import Chat from './pages/Chat'
 import AdminPanel from './pages/AdminPanel'
+import Profile from './pages/Profile'
 import Header from './components/Header'
 
 const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000')
@@ -50,6 +51,7 @@ export default function App(){
             <Route path='/schedule' element={<Schedule />} />
             <Route path='/chat' element={<Chat />} />
             <Route path='/admin' element={<AdminPanel />} />
+            <Route path='/profile' element={<Profile />} />
           </Routes>
         </Container>
       ) : (

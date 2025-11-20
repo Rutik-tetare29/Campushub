@@ -6,6 +6,55 @@ import '../styles/Dashboard.css'
 export default function Dashboard({ user, setUser }){
   const socket = useContext(SocketContext)
   const [msgs, setMsgs] = useState([])
+  const [profileComplete, setProfileComplete] = useState(true)
+  const [stats, setStats] = useState({
+    schedules: 0,
+    subjects: 0,
+    notices: 0,
+    uploads: 0
+  })
+
+  useEffect(() => {
+    checkProfileCompletion()
+    fetchRealStats()
+  }, [])
+
+  const fetchRealStats = async () => {
+    try {
+      const [schedulesRes, subjectsRes, noticesRes, uploadsRes] = await Promise.all([
+        API.get('/schedules').catch(() => ({ data: [] })),
+        API.get('/subjects').catch(() => ({ data: [] })),
+        API.get('/notices').catch(() => ({ data: [] })),
+        API.get('/upload').catch(() => ({ data: [] }))
+      ])
+      
+      setStats({
+        schedules: schedulesRes.data.length,
+        subjects: subjectsRes.data.length,
+        notices: noticesRes.data.length,
+        uploads: uploadsRes.data.length
+      })
+    } catch (err) {
+      console.error('Failed to fetch stats:', err)
+    }
+  }
+
+  const checkProfileCompletion = async () => {
+    try {
+      const userId = user._id || user.id
+      const res = await API.get(`/users/profile/${userId}`)
+      const profile = res.data
+      // Check if essential fields are filled
+      const isComplete = profile.phone && profile.address && (
+        profile.role === 'student' ? profile.studentId && profile.department :
+        profile.role === 'teacher' ? profile.employeeId && profile.department :
+        true // Admin doesn't need extra fields
+      )
+      setProfileComplete(isComplete)
+    } catch (err) {
+      console.error('Failed to check profile:', err)
+    }
+  }
 
   useEffect(()=>{
     socket.on('new_notice', data => {
@@ -49,6 +98,7 @@ export default function Dashboard({ user, setUser }){
   },[socket])
 
   const quickActions = [
+    { icon: 'bi-person-circle', title: 'My Profile', href: '/profile', color: 'secondary', description: 'View and edit your profile' },
     { icon: 'bi-calendar-check-fill', title: 'View Schedule', href: '/schedule', color: 'primary', description: 'Check your class timetable' },
     { icon: 'bi-book-fill', title: 'Subjects', href: '/subjects', color: 'purple', description: 'Browse course materials' },
     { icon: 'bi-megaphone-fill', title: 'Notices', href: '/notices', color: 'warning', description: 'Read announcements' },
@@ -67,11 +117,11 @@ export default function Dashboard({ user, setUser }){
     })
   }
 
-  const stats = [
-    { icon: 'bi-calendar-check', label: 'Classes Today', value: '5', color: 'primary' },
-    { icon: 'bi-book', label: 'Active Subjects', value: '8', color: 'purple' },
-    { icon: 'bi-megaphone', label: 'New Notices', value: '3', color: 'warning' },
-    { icon: 'bi-chat-dots', label: 'Messages', value: '12', color: 'success' },
+  const statsDisplay = [
+    { icon: 'bi-calendar-check', label: 'Total Schedules', value: stats.schedules, color: 'primary' },
+    { icon: 'bi-book', label: 'Active Subjects', value: stats.subjects, color: 'purple' },
+    { icon: 'bi-megaphone', label: 'Total Notices', value: stats.notices, color: 'warning' },
+    { icon: 'bi-cloud-upload', label: 'Resources', value: stats.uploads, color: 'success' },
   ]
 
   return (
@@ -103,13 +153,31 @@ export default function Dashboard({ user, setUser }){
       </div>
 
       <div className="container mt-4">
+        {/* Profile Completion Alert */}
+        {!profileComplete && (
+          <div className="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+            <div className="d-flex align-items-center">
+              <i className="bi bi-exclamation-triangle-fill me-3" style={{ fontSize: '24px' }}></i>
+              <div className="flex-grow-1">
+                <h5 className="alert-heading mb-1">Complete Your Profile</h5>
+                <p className="mb-2">Your profile is incomplete. Please add your details to get the most out of Campus Connect.</p>
+                <a href="/profile" className="btn btn-sm btn-warning">
+                  <i className="bi bi-person-fill-gear me-1"></i>
+                  Complete Profile Now
+                </a>
+              </div>
+            </div>
+            <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="row g-4 mb-4">
-          {stats.map((stat, index) => (
+          {statsDisplay.map((stat, index) => (
             <div key={index} className="col-md-6 col-lg-3">
               <div className={`stat-card stat-card-${stat.color}`}>
                 <div className="stat-icon">
-                  <i className={stat.icon}></i>
+                  <i className={`bi ${stat.icon}`}></i>
                 </div>
                 <div className="stat-content">
                   <h3 className="stat-value">{stat.value}</h3>

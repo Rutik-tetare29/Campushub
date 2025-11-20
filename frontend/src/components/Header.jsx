@@ -10,11 +10,13 @@ export default function Header({ user, onLogout }){
           Campus Connect
         </Typography>
         <Box>
+          <Button color="inherit" component={RouterLink} to='/dashboard'>Dashboard</Button>
           <Button color="inherit" component={RouterLink} to='/schedule'>Schedule</Button>
           <Button color="inherit" component={RouterLink} to='/subjects'>Subjects</Button>
           <Button color="inherit" component={RouterLink} to='/notices'>Notices</Button>
           <Button color="inherit" component={RouterLink} to='/uploads'>Resources</Button>
           <Button color="inherit" component={RouterLink} to='/chat'>Chat</Button>
+          <Button color="inherit" component={RouterLink} to='/profile'>Profile</Button>
           {user?.role === 'admin' && (
             <Button 
               color="inherit" 

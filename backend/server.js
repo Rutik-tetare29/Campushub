@@ -43,6 +43,7 @@ app.use('/api/subjects', require('./routes/subject'));
 app.use('/api/schedules', require('./routes/schedule'));
 app.use('/api/messages', require('./routes/message'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/users', require('./routes/users'));
 
 io.on('connection', socket => {
   console.log('socket connected', socket.id);
