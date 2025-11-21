@@ -1,0 +1,6 @@
+{
+  "watch": ["routes", "models", "middleware", "services", "webrtc", "server.js"],
+  "ignore": ["uploads/*", "*.log", "node_modules"],
+  "ext": "js,json",
+  "delay": "2000"
+}

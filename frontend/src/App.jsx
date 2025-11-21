@@ -14,9 +14,34 @@ import Schedule from './pages/Schedule'
 import Chat from './pages/Chat'
 import AdminPanel from './pages/AdminPanel'
 import Profile from './pages/Profile'
+import Assignments from './pages/Assignments'
+import AssignmentDetail from './pages/AssignmentDetail'
+import Grades from './pages/Grades'
+import Attendance from './pages/Attendance'
+import CalendarPage from './pages/CalendarPage'
+import AnalyticsDashboard from './pages/AnalyticsDashboard'
+import ChatRoomsPage from './pages/ChatRoomsPage'
+import VideoConference from './pages/VideoConference'
+import SearchPage from './pages/SearchPage'
 import Header from './components/Header'
 
-const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000')
+const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+})
+
+socket.on('connect', () => {
+  console.log('✅ Socket connected:', socket.id)
+})
+
+socket.on('connect_error', (error) => {
+  console.error('❌ Socket connection error:', error)
+})
+
+socket.on('disconnect', (reason) => {
+  console.log('🔌 Socket disconnected:', reason)
+})
 
 export const SocketContext = React.createContext(socket)
 
@@ -27,6 +52,7 @@ export default function App(){
   const navigate = useNavigate()
 
   useEffect(()=>{
+    console.log('App mounted, user:', user)
     if (user) socket.emit('join', user.id)
   },[user])
 
@@ -50,6 +76,15 @@ export default function App(){
             <Route path='/subjects' element={<Subjects />} />
             <Route path='/schedule' element={<Schedule />} />
             <Route path='/chat' element={<Chat />} />
+            <Route path='/assignments' element={<Assignments />} />
+            <Route path='/assignments/:id' element={<AssignmentDetail />} />
+            <Route path='/grades' element={<Grades />} />
+            <Route path='/attendance' element={<Attendance />} />
+            <Route path='/calendar' element={<CalendarPage />} />
+            <Route path='/analytics' element={<AnalyticsDashboard />} />
+            <Route path='/chatrooms' element={<ChatRoomsPage />} />
+            <Route path='/video/:roomId' element={<VideoConference />} />
+            <Route path='/search' element={<SearchPage />} />
             <Route path='/admin' element={<AdminPanel />} />
             <Route path='/profile' element={<Profile />} />
           </Routes>

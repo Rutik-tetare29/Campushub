@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import API from '../api'
+import AvatarUpload from '../components/AvatarUpload'
 import '../styles/Profile.css'
 
 export default function Profile() {
@@ -10,6 +11,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
   const [passwordDialog, setPasswordDialog] = useState(false)
+  const [showAvatarUpload, setShowAvatarUpload] = useState(false)
   const [formData, setFormData] = useState({})
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -219,10 +221,44 @@ export default function Profile() {
             <div className="row align-items-end">
               <div className="col-lg-8">
                 <div className="d-flex align-items-center gap-4">
-                  <div className="profile-avatar-wrapper">
-                    <div className="profile-avatar">
-                      {profile.name?.charAt(0).toUpperCase()}
-                    </div>
+                  <div className="profile-avatar-wrapper" style={{ position: 'relative' }}>
+                    {profile.avatar ? (
+                      <img
+                        src={`${import.meta.env.VITE_API_URL}${profile.avatar}`}
+                        alt="Avatar"
+                        className="profile-avatar"
+                        style={{ 
+                          width: '120px', 
+                          height: '120px', 
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '4px solid white',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                        }}
+                      />
+                    ) : (
+                      <div className="profile-avatar">
+                        {profile.name?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <button
+                      className="btn btn-sm btn-primary rounded-circle"
+                      style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        right: '0',
+                        width: '36px',
+                        height: '36px',
+                        padding: '0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onClick={() => setShowAvatarUpload(true)}
+                      title="Change avatar"
+                    >
+                      <i className="bi bi-camera-fill"></i>
+                    </button>
                     <span className={`status-indicator bg-${getRoleColor(profile.role)}`}></span>
                   </div>
                   <div className="profile-info mt-5">
@@ -721,6 +757,17 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Avatar Upload Modal */}
+      <AvatarUpload
+        show={showAvatarUpload}
+        onHide={() => setShowAvatarUpload(false)}
+        currentAvatar={profile?.avatar}
+        onUploadSuccess={(newAvatar) => {
+          setProfile({ ...profile, avatar: newAvatar });
+          fetchProfile();
+        }}
+      />
     </div>
   )
 }

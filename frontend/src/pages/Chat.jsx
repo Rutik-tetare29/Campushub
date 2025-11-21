@@ -40,11 +40,22 @@ export default function Chat(){
   const submit = async e => {
     e.preventDefault()
     if (!content.trim()) return
+    
+    console.log('📤 Sending message:', content, 'to room:', room)
+    console.log('👤 Current user:', user)
+    console.log('🔑 Token exists:', !!localStorage.getItem('token'))
+    
     try{
-      await API.post('/messages', { content, room })
+      const response = await API.post('/messages', { content, room })
+      console.log('✅ Message sent successfully:', response.data)
       setContent('')
+      // Optionally add the message immediately to messages array
+      // setMessages(m => [...m, response.data])
     }catch(err){
-      alert(err?.response?.data?.message || 'Could not send message')
+      console.error('❌ Failed to send message:', err)
+      console.error('Error response:', err?.response?.data)
+      console.error('Error status:', err?.response?.status)
+      alert(err?.response?.data?.message || `Could not send message: ${err.message}`)
     }
   }
 

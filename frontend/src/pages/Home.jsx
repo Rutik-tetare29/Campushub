@@ -48,6 +48,30 @@ function Home() {
 
   return (
     <div className="home-page">
+      {/* Debug: Clear localStorage button */}
+      <button 
+        onClick={() => {
+          localStorage.clear();
+          window.location.reload();
+        }}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 9999,
+          padding: '10px 20px',
+          background: '#ff4444',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}
+      >
+        🔄 Clear Cache & Restart
+      </button>
+      
       {/* Hero Section */}
       <section className="hero-section">
         <nav className="navbar navbar-expand-lg navbar-dark fixed-top">

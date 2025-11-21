@@ -104,6 +104,14 @@ export default function Dashboard({ user, setUser }){
     { icon: 'bi-megaphone-fill', title: 'Notices', href: '/notices', color: 'warning', description: 'Read announcements' },
     { icon: 'bi-cloud-upload-fill', title: 'Resources', href: '/uploads', color: 'info', description: 'Access study materials' },
     { icon: 'bi-chat-dots-fill', title: 'Chat', href: '/chat', color: 'success', description: 'Connect with others' },
+    { icon: 'bi-file-earmark-text-fill', title: 'Assignments', href: '/assignments', color: 'primary', description: 'View and submit assignments' },
+    { icon: 'bi-trophy-fill', title: 'Grades', href: '/grades', color: 'warning', description: 'Check your academic performance' },
+    { icon: 'bi-check-circle-fill', title: 'Attendance', href: '/attendance', color: 'success', description: 'Track your attendance record' },
+    { icon: 'bi-calendar-event-fill', title: 'Calendar', href: '/calendar', color: 'info', description: 'View all events and deadlines' },
+    { icon: 'bi-graph-up-arrow', title: 'Analytics', href: '/analytics', color: 'purple', description: 'Detailed performance insights' },
+    { icon: 'bi-people-fill', title: 'Chat Rooms', href: '/chatrooms', color: 'success', description: 'Join group discussions' },
+    { icon: 'bi-camera-video-fill', title: 'Video Conference', href: '/video/general', color: 'danger', description: 'Start or join video calls' },
+    { icon: 'bi-search', title: 'Advanced Search', href: '/search', color: 'dark', description: 'Search across all content' },
   ]
 
   // Add admin panel for admin users
