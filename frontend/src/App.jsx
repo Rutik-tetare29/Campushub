@@ -24,6 +24,7 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import ChatRoomsPage from './pages/ChatRoomsPage'
 import VideoConference from './pages/VideoConference'
 import SearchPage from './pages/SearchPage'
+import CompleteProfile from './pages/CompleteProfile'
 import Header from './components/Header'
 
 const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
@@ -54,6 +55,14 @@ export default function App(){
 
   useEffect(()=>{
     console.log('App mounted, user:', user)
+    
+    // Check if student needs to complete profile
+    if (user && user.role === 'student' && !user.profileCompleted) {
+      if (window.location.pathname !== '/complete-profile') {
+        navigate('/complete-profile')
+      }
+    }
+    
     if (user) socket.emit('join', user.id)
   },[user])
 
@@ -70,6 +79,7 @@ export default function App(){
       {user ? (
         <Container sx={{ mt: 4 }}>
           <Routes>
+            <Route path='/complete-profile' element={<CompleteProfile setUser={setUser} />} />
             <Route path='/' element={<Dashboard user={user} setUser={setUser} />} />
             <Route path='/dashboard' element={<Dashboard user={user} setUser={setUser} />} />
             <Route path='/notices' element={<Notices />} />

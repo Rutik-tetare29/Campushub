@@ -28,7 +28,19 @@ router.post('/register', async (req, res) => {
     console.log('User registered successfully:', email);
     
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        profileCompleted: user.profileCompleted || false,
+        department: user.department,
+        semester: user.semester,
+        rollNumber: user.rollNumber
+      } 
+    });
   } catch (err) {
     console.error('Registration error:', err);
     res.status(500).json({ message: 'Server error' });
@@ -56,7 +68,19 @@ router.post('/login', async (req, res) => {
     
     console.log('Login successful:', email);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        profileCompleted: user.profileCompleted || false,
+        department: user.department,
+        semester: user.semester,
+        rollNumber: user.rollNumber
+      } 
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });

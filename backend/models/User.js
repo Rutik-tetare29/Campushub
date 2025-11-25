@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
   enrollmentYear: { type: String },
   semester: { type: String },
   rollNumber: { type: String },
+  department: { type: String }, // Required for students
+  profileCompleted: { type: Boolean, default: false }, // Track if student completed profile
   
   // QR Code for student identification
   qrCode: { type: String },
@@ -29,9 +31,7 @@ const userSchema = new mongoose.Schema({
   employeeId: { type: String },
   designation: { type: String },
   specialization: { type: String },
-  
-  // Common academic field
-  department: { type: String },
+  department: { type: String }, // Moved from common field
   
   // Admin-specific fields
   adminId: { type: String },

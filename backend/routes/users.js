@@ -5,6 +5,49 @@ const { permit } = require('../middleware/permission');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
+// Complete student profile (required fields)
+router.post('/complete-profile', auth, async (req, res) => {
+  try {
+    const { department, rollNumber, semester } = req.body;
+    
+    // Only students need to complete profile
+    if (req.user.role !== 'student') {
+      return res.status(400).json({ message: 'This endpoint is for students only' });
+    }
+    
+    // Validate required fields
+    if (!department || !rollNumber || !semester) {
+      return res.status(400).json({ message: 'Department, roll number, and semester are required' });
+    }
+    
+    // Check if roll number is already taken
+    const existingStudent = await User.findOne({ 
+      rollNumber, 
+      _id: { $ne: req.user._id } 
+    });
+    
+    if (existingStudent) {
+      return res.status(400).json({ message: 'Roll number already exists' });
+    }
+    
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        department,
+        rollNumber,
+        semester,
+        profileCompleted: true
+      },
+      { new: true }
+    ).select('-password');
+    
+    res.json(updatedUser);
+  } catch (err) {
+    console.error('Complete profile error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all students (for teachers and admins)
 router.get('/students', auth, permit('teacher', 'admin'), async (req, res) => {
   try {

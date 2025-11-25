@@ -38,7 +38,8 @@ import {
   EventNote,
   Announcement,
   CloudUpload,
-  AdminPanelSettings
+  AdminPanelSettings,
+  Close
 } from '@mui/icons-material'
 import API from '../api'
 
@@ -283,7 +284,21 @@ function UsersManagement() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+        <DialogTitle>
+          {editUser ? 'Edit User' : 'Add New User'}
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpenDialog(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
@@ -432,7 +447,21 @@ function SubjectsManagement() {
       </TableContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editSubject ? 'Edit Subject' : 'Add New Subject'}</DialogTitle>
+        <DialogTitle>
+          {editSubject ? 'Edit Subject' : 'Add New Subject'}
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpenDialog(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
