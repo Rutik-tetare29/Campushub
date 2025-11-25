@@ -22,6 +22,8 @@ const Attendance = () => {
     schedule: '',
     expiryMinutes: 10
   });
+  const [countdown, setCountdown] = useState(null);
+  const [countdownInterval, setCountdownInterval] = useState(null);
   const user = JSON.parse(localStorage.getItem('user'));
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
 
@@ -34,8 +36,47 @@ const Attendance = () => {
       if (scanner) {
         scanner.clear();
       }
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
     };
   }, []);
+
+  // Start countdown timer
+  useEffect(() => {
+    if (showQRModal && activeSession) {
+      // Clear any existing interval
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+
+      // Calculate expiry time from session creation
+      const expiryTime = new Date(activeSession.expiresAt).getTime();
+      
+      const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const timeLeft = expiryTime - now;
+        
+        if (timeLeft <= 0) {
+          setCountdown('Expired');
+          clearInterval(interval);
+          setCountdownInterval(null);
+        } else {
+          const minutes = Math.floor(timeLeft / 60000);
+          const seconds = Math.floor((timeLeft % 60000) / 1000);
+          setCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        }
+      }, 1000);
+      
+      setCountdownInterval(interval);
+    }
+    
+    return () => {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    };
+  }, [showQRModal, activeSession]);
 
   const fetchAttendance = async () => {
     try {
@@ -115,7 +156,7 @@ const Attendance = () => {
       setActiveSession(data);
       setShowCreateSessionModal(false);
       setShowQRModal(true);
-      toast.success(`QR session created! Valid for ${sessionForm.expiryMinutes} minutes`);
+      toast.success(`QR session created! Valid for ${data.expiryMinutes || sessionForm.expiryMinutes} minutes`);
       
       // Reset form
       setSessionForm({
@@ -476,9 +517,9 @@ const Attendance = () => {
                 </div>
                 <div>
                   <strong>Valid For:</strong>
-                  <p className="mb-0 text-danger">
+                  <p className={`mb-0 ${countdown === 'Expired' ? 'text-danger' : 'text-success'}`}>
                     <i className="bi bi-clock me-1"></i>
-                    {sessionForm.expiryMinutes || 10} minutes
+                    {countdown || 'Loading...'}
                   </p>
                 </div>
               </div>
