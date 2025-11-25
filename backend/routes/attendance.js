@@ -8,6 +8,250 @@ const { permit } = require('../middleware/permission');
 const qrService = require('../services/qrService');
 const notificationService = require('../services/notificationService');
 const { body, validationResult } = require('express-validator');
+const QRCode = require('qrcode');
+
+/**
+ * @route   POST /api/attendance/student-qr/generate
+ * @desc    Generate QR code for a specific student (for ID verification)
+ * @access  Private (Teacher/Admin)
+ */
+router.post(
+  '/student-qr/generate',
+  auth,
+  permit('teacher', 'admin'),
+  [
+    body('studentId').notEmpty().withMessage('Student ID is required'),
+    body('expiryDays').optional().isInt({ min: 1, max: 365 }).withMessage('Expiry days must be between 1 and 365')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { studentId, expiryDays = 365 } = req.body;
+
+      // Get student details
+      const User = require('../models/User');
+      const student = await User.findById(studentId).select('name email rollNumber department role');
+
+      if (!student) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+
+      if (student.role !== 'student') {
+        return res.status(400).json({ message: 'User is not a student' });
+      }
+
+      // Generate QR data
+      const qrData = {
+        studentId: student._id,
+        name: student.name,
+        rollNumber: student.rollNumber,
+        department: student.department,
+        type: 'student_id',
+        generatedBy: req.user.id,
+        generatedAt: new Date(),
+        expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
+      };
+
+      // Generate QR code image
+      const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+        errorCorrectionLevel: 'H',
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Save QR to student profile
+      student.qrCode = qrCodeDataURL;
+      student.qrData = qrData;
+      student.qrGeneratedAt = new Date();
+      student.qrExpiresAt = qrData.expiresAt;
+      await student.save();
+
+      // Send notification to student
+      await notificationService.createNotification({
+        recipient: studentId,
+        type: 'qr_generated',
+        title: 'QR Code Generated',
+        message: 'Your student ID QR code has been generated. You can view it in your profile.',
+        link: '/profile',
+        priority: 'high',
+        metadata: {
+          generatedBy: req.user.name,
+          expiresAt: qrData.expiresAt
+        }
+      });
+
+      res.status(201).json({
+        message: 'QR code generated successfully',
+        qrCode: qrCodeDataURL,
+        qrData,
+        student: {
+          id: student._id,
+          name: student.name,
+          rollNumber: student.rollNumber,
+          department: student.department
+        }
+      });
+    } catch (error) {
+      console.error('Error generating student QR:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  }
+);
+
+/**
+ * @route   POST /api/attendance/student-qr/bulk-generate
+ * @desc    Generate QR codes for multiple students
+ * @access  Private (Teacher/Admin)
+ */
+router.post(
+  '/student-qr/bulk-generate',
+  auth,
+  permit('teacher', 'admin'),
+  [
+    body('studentIds').isArray({ min: 1 }).withMessage('Student IDs array is required'),
+    body('expiryDays').optional().isInt({ min: 1, max: 365 })
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { studentIds, expiryDays = 365 } = req.body;
+
+      const User = require('../models/User');
+      const students = await User.find({
+        _id: { $in: studentIds },
+        role: 'student'
+      }).select('name email rollNumber department');
+
+      if (students.length === 0) {
+        return res.status(404).json({ message: 'No valid students found' });
+      }
+
+      const results = [];
+
+      for (const student of students) {
+        try {
+          // Generate QR data
+          const qrData = {
+            studentId: student._id,
+            name: student.name,
+            rollNumber: student.rollNumber,
+            department: student.department,
+            type: 'student_id',
+            generatedBy: req.user.id,
+            generatedAt: new Date(),
+            expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
+          };
+
+          // Generate QR code image
+          const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+            errorCorrectionLevel: 'H',
+            width: 300,
+            margin: 2
+          });
+
+          // Save to student profile
+          student.qrCode = qrCodeDataURL;
+          student.qrData = qrData;
+          student.qrGeneratedAt = new Date();
+          student.qrExpiresAt = qrData.expiresAt;
+          await student.save();
+
+          // Send notification
+          await notificationService.createNotification({
+            recipient: student._id,
+            type: 'qr_generated',
+            title: 'QR Code Generated',
+            message: 'Your student ID QR code has been generated. You can view it in your profile.',
+            link: '/profile',
+            priority: 'high',
+            metadata: {
+              generatedBy: req.user.name,
+              expiresAt: qrData.expiresAt
+            }
+          });
+
+          results.push({
+            studentId: student._id,
+            name: student.name,
+            status: 'success'
+          });
+        } catch (err) {
+          results.push({
+            studentId: student._id,
+            name: student.name,
+            status: 'failed',
+            error: err.message
+          });
+        }
+      }
+
+      res.status(201).json({
+        message: `Generated QR codes for ${results.filter(r => r.status === 'success').length} students`,
+        results
+      });
+    } catch (error) {
+      console.error('Error bulk generating QR:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/attendance/student-qr/:studentId
+ * @desc    Get student's QR code
+ * @access  Private (Student can see own, Teacher/Admin can see all)
+ */
+router.get('/student-qr/:studentId', auth, async (req, res) => {
+  try {
+    // Students can only access their own QR
+    if (req.user.role === 'student' && req.user.id !== req.params.studentId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const User = require('../models/User');
+    const student = await User.findById(req.params.studentId).select('name rollNumber department qrCode qrData qrGeneratedAt qrExpiresAt');
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (!student.qrCode) {
+      return res.status(404).json({ message: 'QR code not generated yet' });
+    }
+
+    // Check if expired
+    const isExpired = student.qrExpiresAt && new Date() > new Date(student.qrExpiresAt);
+
+    res.json({
+      student: {
+        id: student._id,
+        name: student.name,
+        rollNumber: student.rollNumber,
+        department: student.department
+      },
+      qrCode: student.qrCode,
+      qrData: student.qrData,
+      generatedAt: student.qrGeneratedAt,
+      expiresAt: student.qrExpiresAt,
+      isExpired
+    });
+  } catch (error) {
+    console.error('Error fetching student QR:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 
 /**
  * @route   GET /api/attendance
@@ -151,15 +395,17 @@ router.post(
 
       const { schedule, subject, date, location, expiryMinutes = 10 } = req.body;
 
-      // Check if session already exists
-      const existing = await AttendanceSession.findOne({
-        schedule,
-        date: new Date(date),
-        isActive: true
-      });
+      // Only check for existing session if schedule is a valid ObjectId (not temp)
+      if (schedule && !schedule.startsWith('temp-schedule-')) {
+        const existing = await AttendanceSession.findOne({
+          schedule,
+          date: new Date(date),
+          isActive: true
+        });
 
-      if (existing) {
-        return res.status(400).json({ message: 'Active session already exists for this schedule' });
+        if (existing) {
+          return res.status(400).json({ message: 'Active session already exists for this schedule' });
+        }
       }
 
       // Generate QR code
@@ -228,19 +474,28 @@ router.post(
   auth,
   permit('student'),
   [
-    body('sessionId').notEmpty().withMessage('Session ID is required'),
     body('qrData').notEmpty().withMessage('QR data is required'),
     body('location').optional().isObject()
   ],
   async (req, res) => {
     try {
-      const { sessionId, qrData, location } = req.body;
+      const { qrData, location } = req.body;
 
-      const session = await AttendanceSession.findById(sessionId)
-        .populate('schedule');
+      // Parse QR data to get session information
+      const parsedQR = qrService.parseQRData(qrData);
+      
+      if (!parsedQR || parsedQR.type !== 'attendance') {
+        return res.status(400).json({ message: 'Invalid attendance QR code' });
+      }
+
+      // Find the active session based on QR data
+      const session = await AttendanceSession.findOne({
+        qrData: qrData,
+        isActive: true
+      }).populate('subject');
 
       if (!session) {
-        return res.status(404).json({ message: 'Session not found' });
+        return res.status(404).json({ message: 'Session not found or has expired' });
       }
 
       if (!session.isActive) {
@@ -259,10 +514,10 @@ router.post(
         return res.status(400).json({ message: validation.reason });
       }
 
-      // Check if already marked
+      // Check if already marked for this session
       const existing = await Attendance.findOne({
         student: req.user.id,
-        schedule: session.schedule._id,
+        subject: session.subject._id,
         date: session.date
       });
 
@@ -270,17 +525,11 @@ router.post(
         return res.status(400).json({ message: 'Attendance already marked for this session' });
       }
 
-      // Check if student is enrolled in this schedule
-      const schedule = await Schedule.findById(session.schedule._id);
-      if (!schedule.students.includes(req.user.id)) {
-        return res.status(403).json({ message: 'You are not enrolled in this class' });
-      }
-
-      // Mark attendance
+      // Mark attendance (no schedule check since we're using temp schedules)
       const attendance = await Attendance.create({
         student: req.user.id,
-        schedule: session.schedule._id,
-        subject: session.subject,
+        schedule: session.schedule || null,
+        subject: session.subject._id,
         date: session.date,
         status: 'present',
         markedBy: session.teacher,

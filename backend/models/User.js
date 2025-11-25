@@ -17,6 +17,13 @@ const userSchema = new mongoose.Schema({
   studentId: { type: String },
   enrollmentYear: { type: String },
   semester: { type: String },
+  rollNumber: { type: String },
+  
+  // QR Code for student identification
+  qrCode: { type: String },
+  qrData: { type: mongoose.Schema.Types.Mixed },
+  qrGeneratedAt: { type: Date },
+  qrExpiresAt: { type: Date },
   
   // Teacher-specific fields
   employeeId: { type: String },

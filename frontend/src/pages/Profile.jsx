@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import API from '../api'
 import AvatarUpload from '../components/AvatarUpload'
+import StudentQRDisplay from '../components/StudentQRDisplay'
 import '../styles/Profile.css'
 
 export default function Profile() {
@@ -627,7 +628,7 @@ export default function Profile() {
             </div>
 
             {/* Activity Stats Card */}
-            <div className="card border-0 shadow-sm">
+            <div className="card border-0 shadow-sm mb-4">
               <div className="card-header bg-white border-0 py-3">
                 <h5 className="mb-0 fw-bold">
                   <i className="bi bi-graph-up text-primary me-2"></i>
@@ -681,6 +682,11 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {/* Student QR Code Card - Only for students */}
+            {profile.role === 'student' && (
+              <StudentQRDisplay studentId={profile._id || profile.id} />
+            )}
           </div>
         </div>
       </div>

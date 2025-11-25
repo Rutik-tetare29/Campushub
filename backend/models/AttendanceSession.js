@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const attendanceSessionSchema = new mongoose.Schema({
-  schedule: { type: mongoose.Schema.Types.ObjectId, ref: 'Schedule', required: true },
+  schedule: { type: mongoose.Schema.Types.Mixed, required: false }, // Allow string or ObjectId for flexibility
   subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
   date: { type: Date, required: true },
   teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

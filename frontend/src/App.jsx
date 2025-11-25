@@ -18,6 +18,7 @@ import Assignments from './pages/Assignments'
 import AssignmentDetail from './pages/AssignmentDetail'
 import Grades from './pages/Grades'
 import Attendance from './pages/Attendance'
+import StudentQRGeneration from './pages/StudentQRGeneration'
 import CalendarPage from './pages/CalendarPage'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import ChatRoomsPage from './pages/ChatRoomsPage'
@@ -80,6 +81,7 @@ export default function App(){
             <Route path='/assignments/:id' element={<AssignmentDetail />} />
             <Route path='/grades' element={<Grades />} />
             <Route path='/attendance' element={<Attendance />} />
+            <Route path='/attendance/student-qr' element={<StudentQRGeneration />} />
             <Route path='/calendar' element={<CalendarPage />} />
             <Route path='/analytics' element={<AnalyticsDashboard />} />
             <Route path='/chatrooms' element={<ChatRoomsPage />} />

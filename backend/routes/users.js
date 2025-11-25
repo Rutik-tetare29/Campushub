@@ -1,8 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
+const { permit } = require('../middleware/permission');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+
+// Get all students (for teachers and admins)
+router.get('/students', auth, permit('teacher', 'admin'), async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' })
+      .select('name email rollNumber department studentId enrollmentYear semester avatar qrCode qrData qrGeneratedAt qrExpiresAt')
+      .sort({ rollNumber: 1, name: 1 });
+    
+    res.json(students);
+  } catch (err) {
+    console.error('Get students error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // Get user profile
 router.get('/profile/:id', auth, async (req, res) => {

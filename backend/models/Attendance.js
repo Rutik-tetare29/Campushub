@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  schedule: { type: mongoose.Schema.Types.ObjectId, ref: 'Schedule', required: true },
+  schedule: { type: mongoose.Schema.Types.Mixed, required: false }, // Allow string or ObjectId, optional
   subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
   date: { type: Date, required: true },
   status: { 
@@ -18,8 +18,10 @@ const attendanceSchema = new mongoose.Schema({
     default: 'manual' 
   },
   notes: { type: String },
-  latitude: { type: Number },
-  longitude: { type: Number }
+  geolocation: {
+    latitude: { type: Number },
+    longitude: { type: Number }
+  }
 }, { timestamps: true });
 
 // Compound index for efficient queries
