@@ -138,16 +138,34 @@ const ChatRoomDetail = () => {
 
   const startStream = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      });
-
-      setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Your browser does not support camera/microphone access. Please use Chrome, Firefox, or Edge.');
+        return;
       }
 
+      toast.info('Requesting camera and microphone access...');
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      console.log('✅ Stream acquired with tracks:', stream.getTracks().map(t => `${t.kind}: ${t.label}`));
+
+      // Set state FIRST so React renders the video element
+      setLocalStream(stream);
+      setIsStreaming(true);
+      setStreamHost({ userId: user.id || user._id, userName: user.name, hostSocketId: socket.id });
+      
       // Notify server
       socket.emit('start-stream', {
         roomId,
@@ -156,19 +174,100 @@ const ChatRoomDetail = () => {
         streamTitle: streamTitle || `${user.name}'s Live Stream`
       });
 
-      setIsStreaming(true);
-      setStreamHost({ userId: user.id || user._id, userName: user.name });
-      toast.success('Live stream started!');
+      // Wait for React to render, then attach stream to video
+      setTimeout(async () => {
+        if (localVideoRef.current) {
+          console.log('Setting video srcObject after render...');
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.volume = 0; // Mute to prevent feedback
+          localVideoRef.current.muted = true;
+          
+          // Force play the video
+          try {
+            await localVideoRef.current.play();
+            console.log('✅ Local video playing successfully');
+          } catch (playError) {
+            console.error('Play error:', playError);
+          }
+        } else {
+          console.error('❌ localVideoRef.current is still null after timeout!');
+        }
+      }, 100);
+
+      toast.success('Live stream started! 🎥');
       setShowStreamSettings(false);
     } catch (error) {
       console.error('Failed to start stream:', error);
-      toast.error('Failed to access camera/microphone');
+      
+      let errorMessage = 'Failed to access camera/microphone';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = '⚠️ Camera/microphone permission denied. Please click the camera icon in your browser\'s address bar and allow access.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = '⚠️ No camera or microphone found. Please connect your devices and refresh the page.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = '⚠️ Camera/microphone is already in use by another application. Please close other apps using your camera/microphone.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = '⚠️ Camera settings not supported. Trying with lower quality...';
+        
+        // Try with lower quality
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 }, 
+            audio: true 
+          });
+          
+          console.log('✅ Fallback stream acquired');
+          
+          // Set state FIRST
+          setLocalStream(fallbackStream);
+          setIsStreaming(true);
+          setStreamHost({ userId: user.id || user._id, userName: user.name, hostSocketId: socket.id });
+          
+          socket.emit('start-stream', {
+            roomId,
+            userId: user.id || user._id,
+            userName: user.name,
+            streamTitle: streamTitle || `${user.name}'s Live Stream`
+          });
+          
+          // Wait for React to render
+          setTimeout(async () => {
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = fallbackStream;
+              localVideoRef.current.volume = 0;
+              localVideoRef.current.muted = true;
+              try {
+                await localVideoRef.current.play();
+              } catch (playErr) {
+                console.error('Fallback play error:', playErr);
+              }
+            }
+          }, 100);
+          
+          toast.success('Live stream started with reduced quality');
+          setShowStreamSettings(false);
+          return;
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+        }
+      } else if (error.name === 'TypeError') {
+        errorMessage = '⚠️ Your browser does not support video streaming. Please use Chrome, Firefox, Edge, or Safari.';
+      }
+      
+      toast.error(errorMessage, { autoClose: 7000 });
     }
   };
 
   const stopStream = () => {
+    console.log('Stopping stream...');
+    
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      console.log('Stopping all tracks:', localStream.getTracks());
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Stopped ${track.kind} track`);
+      });
       setLocalStream(null);
     }
 
@@ -502,7 +601,22 @@ const ChatRoomDetail = () => {
                       muted
                       playsInline
                       className="w-100"
-                      style={{ maxHeight: '500px', objectFit: 'contain' }}
+                      style={{ maxHeight: '500px', objectFit: 'contain', backgroundColor: '#000' }}
+                      onLoadedMetadata={(e) => {
+                        console.log('📹 Video metadata loaded, dimensions:', e.target.videoWidth, 'x', e.target.videoHeight);
+                        console.log('📹 Video element:', e.target);
+                        console.log('📹 Has srcObject:', !!e.target.srcObject);
+                        e.target.play().catch(err => console.warn('Local video play failed:', err));
+                      }}
+                      onError={(e) => {
+                        console.error('❌ Video element error:', e);
+                      }}
+                      onPlaying={() => {
+                        console.log('✅ Video is playing! Dimensions:', localVideoRef.current?.videoWidth, 'x', localVideoRef.current?.videoHeight);
+                      }}
+                      onCanPlay={() => {
+                        console.log('📹 Video can play');
+                      }}
                     />
                     <div className="position-absolute bottom-0 start-0 end-0 p-3 bg-gradient">
                       <div className="d-flex justify-content-between align-items-center">
@@ -544,7 +658,11 @@ const ChatRoomDetail = () => {
                         autoPlay
                         playsInline
                         className="w-100"
-                        style={{ maxHeight: '500px', objectFit: 'contain' }}
+                        style={{ maxHeight: '500px', objectFit: 'contain', backgroundColor: '#000' }}
+                        onLoadedMetadata={(e) => {
+                          console.log('Remote video metadata loaded');
+                          e.target.play().catch(err => console.warn('Remote video play failed:', err));
+                        }}
                       />
                     ) : (
                       <div className="text-center text-white py-5">
@@ -716,7 +834,19 @@ const ChatRoomDetail = () => {
           <div className="alert alert-info mb-0">
             <small>
               <i className="bi bi-info-circle me-2"></i>
-              Make sure your camera and microphone are connected and allowed.
+              <strong>Important:</strong> Your browser will ask for camera and microphone permission. 
+              Please click "Allow" when prompted. Make sure no other application is using your camera/microphone.
+            </small>
+          </div>
+          <div className="alert alert-warning mb-0 mt-2">
+            <small>
+              <strong>Troubleshooting:</strong>
+              <ul className="mb-0 mt-1" style={{ fontSize: '0.85rem' }}>
+                <li>Check if camera/microphone are properly connected</li>
+                <li>Close other apps using camera (Zoom, Teams, etc.)</li>
+                <li>Allow permissions in browser settings if blocked</li>
+                <li>Use Chrome, Firefox, or Edge for best compatibility</li>
+              </ul>
             </small>
           </div>
         </Modal.Body>

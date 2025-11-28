@@ -21,11 +21,38 @@ const VideoConference = ({ roomId, roomName }) => {
 
   useEffect(() => {
     // Get user media (camera and microphone)
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then(stream => {
+    const initializeMedia = async () => {
+      try {
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Your browser does not support camera/microphone access');
+        }
+
+        // Request permissions with detailed constraints
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }, 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        console.log('✅ Media stream acquired:', stream.getTracks());
         setLocalStream(stream);
+        
         if (userVideo.current) {
           userVideo.current.srcObject = stream;
+          // Ensure video plays
+          try {
+            await userVideo.current.play();
+          } catch (playError) {
+            console.warn('Autoplay prevented, user interaction may be needed:', playError);
+          }
         }
 
         // Join room via socket
@@ -117,11 +144,54 @@ const VideoConference = ({ roomId, roomName }) => {
         socket.on('video-chat-message', (data) => {
           setChatMessages(prev => [...prev, data]);
         });
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Failed to get user media:', err);
-        toast.error('Failed to access camera/microphone');
-      });
+        
+        let errorMessage = 'Failed to access camera/microphone';
+        
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          errorMessage = 'Camera/microphone permission denied. Please allow access in your browser settings.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          errorMessage = 'No camera or microphone found. Please connect a device and try again.';
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          errorMessage = 'Camera/microphone is already in use by another application.';
+        } else if (err.name === 'OverconstrainedError') {
+          errorMessage = 'Camera/microphone constraints cannot be satisfied.';
+        } else if (err.name === 'TypeError') {
+          errorMessage = 'Your browser does not support camera/microphone access. Try Chrome, Firefox, or Edge.';
+        }
+        
+        toast.error(errorMessage, { autoClose: 5000 });
+        
+        // Try with lower constraints as fallback
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 }, 
+            audio: true 
+          });
+          
+          console.log('✅ Fallback media stream acquired');
+          setLocalStream(fallbackStream);
+          
+          if (userVideo.current) {
+            userVideo.current.srcObject = fallbackStream;
+            await userVideo.current.play();
+          }
+          
+          socket.emit('join-room', {
+            roomId,
+            userId: user._id || user.id,
+            userName: user.name
+          });
+          
+          toast.info('Connected with reduced quality');
+        } catch (fallbackErr) {
+          console.error('Fallback also failed:', fallbackErr);
+        }
+      }
+    };
+    
+    initializeMedia();
 
     return () => {
       if (localStream) {
@@ -297,6 +367,10 @@ const VideoConference = ({ roomId, roomName }) => {
                     playsInline
                     className="w-100 h-100"
                     style={{ objectFit: 'cover' }}
+                    onLoadedMetadata={(e) => {
+                      console.log('Video metadata loaded');
+                      e.target.play().catch(err => console.warn('Play failed:', err));
+                    }}
                   />
                   <div className="position-absolute bottom-0 start-0 p-2 bg-dark bg-opacity-75 text-white">
                     <small>{user.name} (You)</small>

@@ -26,6 +26,7 @@ import ChatRoomDetail from './pages/ChatRoomDetail'
 import VideoConference from './pages/VideoConference'
 import SearchPage from './pages/SearchPage'
 import CompleteProfile from './pages/CompleteProfile'
+import CameraTest from './pages/CameraTest'
 import Header from './components/Header'
 
 const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
@@ -99,6 +100,7 @@ export default function App(){
             <Route path='/chatrooms/:roomId' element={<ChatRoomDetail />} />
             <Route path='/video/:roomId' element={<VideoConference />} />
             <Route path='/search' element={<SearchPage />} />
+            <Route path='/camera-test' element={<CameraTest />} />
             <Route path='/admin' element={<AdminPanel />} />
             <Route path='/profile' element={<Profile />} />
           </Routes>
