@@ -17,6 +17,7 @@ const chatRoomSchema = new mongoose.Schema({
   settings: {
     allowFileSharing: { type: Boolean, default: true },
     allowMemberInvite: { type: Boolean, default: true },
+    allowJoin: { type: Boolean, default: true },
     maxMembers: { type: Number, default: 100 }
   },
   lastMessage: {

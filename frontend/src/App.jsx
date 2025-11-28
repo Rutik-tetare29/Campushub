@@ -22,6 +22,7 @@ import StudentQRGeneration from './pages/StudentQRGeneration'
 import CalendarPage from './pages/CalendarPage'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import ChatRoomsPage from './pages/ChatRoomsPage'
+import ChatRoomDetail from './pages/ChatRoomDetail'
 import VideoConference from './pages/VideoConference'
 import SearchPage from './pages/SearchPage'
 import CompleteProfile from './pages/CompleteProfile'
@@ -95,6 +96,7 @@ export default function App(){
             <Route path='/calendar' element={<CalendarPage />} />
             <Route path='/analytics' element={<AnalyticsDashboard />} />
             <Route path='/chatrooms' element={<ChatRoomsPage />} />
+            <Route path='/chatrooms/:roomId' element={<ChatRoomDetail />} />
             <Route path='/video/:roomId' element={<VideoConference />} />
             <Route path='/search' element={<SearchPage />} />
             <Route path='/admin' element={<AdminPanel />} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Form, Badge, ListGroup } from 'react-bootstrap';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import API from '../api';
 
 const ChatRoomsPage = () => {
   const [rooms, setRooms] = useState([]);
@@ -21,10 +21,7 @@ const ChatRoomsPage = () => {
 
   const fetchRooms = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/chatrooms`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const { data } = await API.get('/chatrooms');
       setRooms(data);
     } catch (error) {
       toast.error('Failed to fetch chat rooms');
@@ -34,12 +31,18 @@ const ChatRoomsPage = () => {
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/chatrooms`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // Format data to match backend schema
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        settings: {
+          maxMembers: formData.maxMembers,
+          allowJoin: formData.allowStudentJoin
+        }
+      };
+
+      await API.post('/chatrooms', payload);
       toast.success('Chat room created successfully!');
       setShowCreateModal(false);
       setFormData({
@@ -51,18 +54,14 @@ const ChatRoomsPage = () => {
       });
       fetchRooms();
     } catch (error) {
+      console.error('Create room error:', error);
       toast.error(error.response?.data?.message || 'Failed to create chat room');
     }
   };
 
   const handleJoinRoom = async (roomId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/chatrooms/${roomId}/join`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await API.post(`/chatrooms/${roomId}/join`);
       toast.success('Joined room successfully!');
       fetchRooms();
     } catch (error) {
@@ -72,12 +71,7 @@ const ChatRoomsPage = () => {
 
   const handleLeaveRoom = async (roomId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/chatrooms/${roomId}/leave`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await API.post(`/chatrooms/${roomId}/leave`);
       toast.success('Left room successfully!');
       fetchRooms();
     } catch (error) {
@@ -115,7 +109,9 @@ const ChatRoomsPage = () => {
         {rooms.map(room => {
           const badge = getRoomTypeBadge(room.type);
           const memberCount = room.members?.length || 0;
-          const isFull = room.maxMembers && memberCount >= room.maxMembers;
+          const maxMembers = room.settings?.maxMembers || 100;
+          const allowJoin = room.settings?.allowJoin !== false;
+          const isFull = maxMembers && memberCount >= maxMembers;
           const userIsMember = isMember(room);
 
           return (
@@ -134,7 +130,7 @@ const ChatRoomsPage = () => {
                     <div className="d-flex gap-3">
                       <small className="text-muted">
                         <i className="bi bi-people-fill me-1"></i>
-                        {memberCount}{room.maxMembers ? `/${room.maxMembers}` : ''}
+                        {memberCount}/{maxMembers}
                       </small>
                       {room.lastMessageAt && (
                         <small className="text-muted">
@@ -156,7 +152,7 @@ const ChatRoomsPage = () => {
                         variant="success"
                         size="sm"
                         className="flex-grow-1"
-                        href={`/chatrooms/${room._id}`}
+                        onClick={() => window.location.href = `/chatrooms/${room._id}`}
                       >
                         <i className="bi bi-box-arrow-in-right me-1"></i>
                         Open
@@ -174,13 +170,18 @@ const ChatRoomsPage = () => {
                       variant="primary"
                       size="sm"
                       className="w-100"
-                      disabled={isFull || (!room.allowStudentJoin && user.role === 'student')}
+                      disabled={isFull || (!allowJoin && user.role === 'student')}
                       onClick={() => handleJoinRoom(room._id)}
                     >
                       {isFull ? (
                         <>
                           <i className="bi bi-lock-fill me-1"></i>
                           Room Full
+                        </>
+                      ) : !allowJoin && user.role === 'student' ? (
+                        <>
+                          <i className="bi bi-lock-fill me-1"></i>
+                          Invite Only
                         </>
                       ) : (
                         <>

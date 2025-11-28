@@ -8,21 +8,28 @@ const { body, validationResult } = require('express-validator');
 
 /**
  * @route   GET /api/chatrooms
- * @desc    Get all chat rooms for user
+ * @desc    Get all chat rooms (both member and available to join)
  * @access  Private
  */
 router.get('/', auth, async (req, res) => {
   try {
     const { type, subject } = req.query;
 
-    const query = { members: req.user.id };
+    const query = {};
     if (type) query.type = type;
     if (subject) query.subject = subject;
 
-    const rooms = await ChatRoom.find(query)
+    // Get all rooms except private ones user is not a member of
+    const rooms = await ChatRoom.find({
+      ...query,
+      $or: [
+        { type: { $ne: 'private' } }, // All non-private rooms
+        { members: req.user.id } // Or rooms user is already a member of
+      ]
+    })
       .populate('subject', 'name code')
       .populate('createdBy', 'name avatar')
-      .populate('members', 'name avatar role')
+      .populate('members.user', 'name avatar role')
       .sort({ updatedAt: -1 });
 
     res.json(rooms);
@@ -419,6 +426,50 @@ router.get('/:id/messages', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/chatrooms/:id/messages
+ * @desc    Send message to chat room
+ * @access  Private
+ */
+router.post('/:id/messages', auth, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    const room = await ChatRoom.findById(req.params.id);
+
+    if (!room) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
+
+    // Check if user is a member
+    if (!room.members.includes(req.user.id)) {
+      return res.status(403).json({ message: 'Not a member of this chat room' });
+    }
+
+    const newMessage = await Message.create({
+      sender: req.user.id,
+      chatRoom: req.params.id,
+      message: message.trim(),
+      room: req.params.id
+    });
+
+    await newMessage.populate('sender', 'name avatar role');
+
+    // Update room last message time
+    room.lastMessageAt = new Date();
+    await room.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error sending message:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
